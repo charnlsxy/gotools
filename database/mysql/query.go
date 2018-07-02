@@ -1,13 +1,13 @@
 package mysql
 
 import (
-	"database/sql"
-	"reflect"
-	"unsafe"
-	"errors"
 	"bytes"
-	"strings"
+	"database/sql"
+	"errors"
 	"fmt"
+	"reflect"
+	"strings"
+	"unsafe"
 )
 
 func StructFieldsPointerOf(obj interface{}) ([]interface{}, error) {
@@ -30,6 +30,7 @@ func StructFieldsPointerOf(obj interface{}) ([]interface{}, error) {
 	}
 	return vals, nil
 }
+
 type Query interface {
 	Query(query string, args ...interface{}) (*sql.Rows, error)
 	QueryRow(query string, args ...interface{}) *sql.Row
@@ -56,7 +57,7 @@ func SearchFrom(o interface{}, query Query, sql string, args ...interface{}) err
 			if err != nil {
 				return err
 			}
-			src.Set(reflect.Append(src,v))
+			src.Set(reflect.Append(src, v))
 		}
 	} else if tp.Elem().Kind() == reflect.Struct {
 		row := query.QueryRow(sql, args...)
@@ -64,18 +65,20 @@ func SearchFrom(o interface{}, query Query, sql string, args ...interface{}) err
 		if err := row.Scan(p...); err != nil {
 			return err
 		}
+	} else {
+		return errors.New("not support type of o")
 	}
 	return nil
 }
-
 
 //mysql visible
 
 func NewSql() *Sql {
 	return &Sql{}
 }
+
 type Sql struct {
-	sl,from,where,groupBy,orderBy,limit string
+	sl, from, where, groupBy, orderBy, limit string
 }
 
 func (sl *Sql) Select(s string) *Sql {
@@ -83,7 +86,7 @@ func (sl *Sql) Select(s string) *Sql {
 	return sl
 }
 func (sl *Sql) SelectSlice(s []string) *Sql {
-	sl.sl = strings.Join(s,",")
+	sl.sl = strings.Join(s, ",")
 	return sl
 }
 
@@ -109,30 +112,30 @@ func (sl *Sql) Limit(s string) *Sql {
 }
 func (sl *Sql) Sql() string {
 	str := bytes.Buffer{}
-	str.WriteString(fmt.Sprintf("select %s from %s ",sl.sl,sl.from))
-	if sl.where != ""{
+	str.WriteString(fmt.Sprintf("select %s from %s ", sl.sl, sl.from))
+	if sl.where != "" {
 		str.WriteString(" where ")
 		str.WriteString(sl.where)
 	}
-	if sl.groupBy != ""{
+	if sl.groupBy != "" {
 		str.WriteString(" group by  ")
 		str.WriteString(sl.groupBy)
 	}
-	if sl.orderBy != ""{
+	if sl.orderBy != "" {
 		str.WriteString(" order by  ")
 		str.WriteString(sl.orderBy)
 	}
-	if sl.limit != ""{
+	if sl.limit != "" {
 		str.WriteString(" limit  ")
 		str.WriteString(sl.limit)
 	}
 	return str.String()
 }
 
-func (sl *Sql)ResultIn(o interface{}, args ...interface{}) error {
-	return SearchFrom(o,GetOneUsableDb(),sl.Sql(),args...)
+func (sl *Sql) ResultIn(o interface{}, args ...interface{}) error {
+	return SearchFrom(o, GetOneUsableDb(), sl.Sql(), args...)
 }
 
-func (sl *Sql)ResultInDb(o interface{},query Query ,args ...interface{}) error {
-	return SearchFrom(o,query,sl.Sql(),args...)
+func (sl *Sql) ResultInDb(o interface{}, query Query, args ...interface{}) error {
+	return SearchFrom(o, query, sl.Sql(), args...)
 }

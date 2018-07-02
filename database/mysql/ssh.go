@@ -1,14 +1,14 @@
 package mysql
 
 import (
-	"golang.org/x/crypto/ssh"
-	"io/ioutil"
-	"os"
-	"net"
-	"me/study/tools"
-	"github.com/go-sql-driver/mysql"
 	"database/sql"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
+	"golang.org/x/crypto/ssh"
+	"io/ioutil"
+	"me/study/tools"
+	"net"
+	"os"
 )
 
 func PublicKeyFile(file string) ssh.AuthMethod {
@@ -28,13 +28,12 @@ func SshConfig(user string) *ssh.ClientConfig {
 	sshConfig := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
-			PublicKeyFile(os.Getenv("HOME")+"/.ssh/id_rsa"),
+			PublicKeyFile(os.Getenv("HOME") + "/.ssh/id_rsa"),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	return sshConfig
 }
-
 
 type ViaSSHDialer struct {
 	client *ssh.Client
@@ -44,9 +43,9 @@ func (self *ViaSSHDialer) Dial(addr string) (net.Conn, error) {
 	return self.client.Dial("tcp", addr)
 }
 
-func OpenSsh()  {
-	sshcon,err := ssh.Dial("tcp","..",SshConfig(".."))
-	if tools.ErrNotNil(err){
+func OpenSsh() {
+	sshcon, err := ssh.Dial("tcp", "..", SshConfig(".."))
+	if tools.ErrNotNil(err) {
 		return
 	}
 	//session,err := sshcon.NewSession()
@@ -59,7 +58,7 @@ func OpenSsh()  {
 
 }
 
-func NewSshTunnel(host,user,passwd string) (*ssh.Client,error) {
+func NewSshTunnel(host, user, passwd string) (*ssh.Client, error) {
 	cfg := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
@@ -67,22 +66,22 @@ func NewSshTunnel(host,user,passwd string) (*ssh.Client,error) {
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	return ssh.Dial("tcp",host,cfg)
+	return ssh.Dial("tcp", host, cfg)
 }
 
 //通过ssh获取一条mysql连接
-func NewMysqlDbInSSH(host,user string,cfg *MysqlConfig) (*sql.DB,error) {
+func NewMysqlDbInSSH(host, user string, cfg *MysqlConfig) (*sql.DB, error) {
 
-	sshcon,err := ssh.Dial("tcp",host,SshConfig(user))
-	if err != nil{
-		return nil,err
+	sshcon, err := ssh.Dial("tcp", host, SshConfig(user))
+	if err != nil {
+		return nil, err
 	}
 	mysql.RegisterDial("tcp", (&ViaSSHDialer{sshcon}).Dial)
 
-	db,err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s", cfg.User,cfg.PassWord,cfg.Host,cfg.Db))
-	if err != nil{
-		return nil,err
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s", cfg.User, cfg.PassWord, cfg.Host, cfg.Db))
+	if err != nil {
+		return nil, err
 	}
 
-	return db,nil
+	return db, nil
 }

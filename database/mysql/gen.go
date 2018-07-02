@@ -1,11 +1,11 @@
 package mysql
 
 import (
-"database/sql"
-"strings"
-	"os"
-	"fmt"
 	"bufio"
+	"database/sql"
+	"fmt"
+	"os"
+	"strings"
 )
 
 type Table struct {
@@ -94,20 +94,20 @@ func (c *Config) MergeFieldsMap(m map[string]string) {
 	}
 }
 func (c *Config) FieldsContains(v string) bool {
-	if _,ok := c.fieldsMap[v];ok{
+	if _, ok := c.fieldsMap[v]; ok {
 		return true
 	}
 	return false
 }
 func (c *Config) Fields(v string) string {
-	if k,ok := c.fieldsMap[v];ok{
+	if k, ok := c.fieldsMap[v]; ok {
 		return k
 	}
 	return "interface{}"
 }
 
 func NewConfig(table string) *Config {
-	return &Config{TableName:table}
+	return &Config{TableName: table}
 }
 func ParseTable(db *sql.DB, cfg *Config) (*Table, error) {
 	tb := new(Table)
@@ -125,9 +125,9 @@ func ParseTable(db *sql.DB, cfg *Config) (*Table, error) {
 		f := Field
 		tb.Fields = append(tb.Fields, f)
 		var t string
-		if cfg.FieldsContains(Type){
+		if cfg.FieldsContains(Type) {
 			t = cfg.Fields(Type)
-		}else if strings.Contains(Type, "bigint") {
+		} else if strings.Contains(Type, "bigint") {
 			t = "int64"
 		} else if strings.Contains(Type, "int") {
 			t = "int32"
@@ -143,34 +143,34 @@ func ParseTable(db *sql.DB, cfg *Config) (*Table, error) {
 	return tb, nil
 }
 
-
 type ConnConfig struct {
 	MysqlConfig
 	Config
 	SshHost string
 	SshUser string
 }
-func ParseConfig() *ConnConfig{
-	path := os.Getenv("PWD")+"/mysql_config.properties"
-	fd,err := os.Open(path)
-	if err != nil{
-		fmt.Printf("cannot open file %s ! err: %v\n",path,err)
+
+func ParseConfig() *ConnConfig {
+	path := os.Getenv("PWD") + "/mysql_config.properties"
+	fd, err := os.Open(path)
+	if err != nil {
+		fmt.Printf("cannot open file %s ! err: %v\n", path, err)
 		return nil
 	}
 	scan := bufio.NewScanner(fd)
 	cfg := &ConnConfig{}
-	for scan.Scan(){
+	for scan.Scan() {
 		line := scan.Text()
-		if strings.Trim(line," ")[0] == '#'{ //ignore
+		if strings.Trim(line, " ")[0] == '#' { //ignore
 			continue
 		}
-		kv := strings.Split(line,"=")
-		if len(kv) != 2{
-			fmt.Printf("read err int %s,ignore....",line)
+		kv := strings.Split(line, "=")
+		if len(kv) != 2 {
+			fmt.Printf("read err int %s,ignore....", line)
 			continue
 		}
-		k := strings.Trim(kv[0]," ")
-		v := strings.Trim(kv[1]," ")
+		k := strings.Trim(kv[0], " ")
+		v := strings.Trim(kv[1], " ")
 		switch k {
 		case "host":
 			cfg.Host = v
@@ -195,18 +195,18 @@ func ReadTableFromDefault() string {
 	cfg := ParseConfig()
 	var db *sql.DB
 	var err error
-	if cfg.SshHost != ""{
-		db,err = NewMysqlDbInSSH(cfg.SshHost,cfg.SshUser,&cfg.MysqlConfig)
-	}else{
-		db,err = sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s", cfg.User,cfg.PassWord,cfg.Host,cfg.Db))
+	if cfg.SshHost != "" {
+		db, err = NewMysqlDbInSSH(cfg.SshHost, cfg.SshUser, &cfg.MysqlConfig)
+	} else {
+		db, err = sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s", cfg.User, cfg.PassWord, cfg.Host, cfg.Db))
 	}
-	if err != nil{
-		fmt.Println("op driver err ",err.Error())
+	if err != nil {
+		fmt.Println("op driver err ", err.Error())
 		return ""
 	}
-	table,err := ParseTable(db,&cfg.Config)
-	if err != nil{
-		fmt.Println("parse table err ",err.Error())
+	table, err := ParseTable(db, &cfg.Config)
+	if err != nil {
+		fmt.Println("parse table err ", err.Error())
 		return ""
 	}
 	fmt.Println(table.String())
