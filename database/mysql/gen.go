@@ -15,6 +15,7 @@ type Table struct {
 	Flags  []string
 }
 
+//生成表struct
 func (t *Table) String() string {
 	buf := strings.Builder{}
 	buf.WriteString("type ")
@@ -109,6 +110,8 @@ func (c *Config) Fields(v string) string {
 func NewConfig(table string) *Config {
 	return &Config{TableName: table}
 }
+
+//从db查询生成cfg所配置的表
 func ParseTable(db *sql.DB, cfg *Config) (*Table, error) {
 	tb := new(Table)
 	row, err := db.Query("desc " + cfg.TableName)
@@ -150,6 +153,7 @@ type ConnConfig struct {
 	SshUser string
 }
 
+//从一个配置文件读取一个生成数据库表字段的配置
 func ParseConfig() *ConnConfig {
 	path := os.Getenv("PWD") + "/mysql_config.properties"
 	fd, err := os.Open(path)

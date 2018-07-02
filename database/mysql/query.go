@@ -10,6 +10,7 @@ import (
 	"unsafe"
 )
 
+//反射一个结构体的成员指针，包括非导出成员
 func StructFieldsPointerOf(obj interface{}) ([]interface{}, error) {
 	if obj == nil {
 		return nil, errors.New("nil value")
@@ -36,6 +37,7 @@ type Query interface {
 	QueryRow(query string, args ...interface{}) *sql.Row
 }
 
+//从一个可查询mysql数据的query中将数据写入o
 func SearchFrom(o interface{}, query Query, sql string, args ...interface{}) error {
 	tp := reflect.TypeOf(o)
 	if tp.Kind() != reflect.Ptr {
@@ -72,7 +74,7 @@ func SearchFrom(o interface{}, query Query, sql string, args ...interface{}) err
 }
 
 //mysql visible
-
+//使得sql语句结构化
 func NewSql() *Sql {
 	return &Sql{}
 }

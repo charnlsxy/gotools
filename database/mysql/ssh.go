@@ -71,7 +71,6 @@ func NewSshTunnel(host, user, passwd string) (*ssh.Client, error) {
 
 //通过ssh获取一条mysql连接
 func NewMysqlDbInSSH(host, user string, cfg *MysqlConfig) (*sql.DB, error) {
-
 	sshcon, err := ssh.Dial("tcp", host, SshConfig(user))
 	if err != nil {
 		return nil, err
