@@ -43,9 +43,10 @@ func SearchFrom(o interface{}, query Query, sql string, args ...interface{}) err
 	if tp.Kind() != reflect.Ptr {
 		return errors.New("o is not a pointer")
 	}
+
 	if tp.Elem().Kind() == reflect.Slice &&
 		tp.Elem().Elem().Kind() == reflect.Ptr &&
-		tp.Elem().Elem().Elem().Kind() == reflect.Struct {
+		tp.Elem().Elem().Elem().Kind() == reflect.Struct { //[]*struct
 		t := tp.Elem().Elem().Elem()
 		rows, err := query.Query(sql, args...)
 		if err != nil {
@@ -68,10 +69,23 @@ func SearchFrom(o interface{}, query Query, sql string, args ...interface{}) err
 			return err
 		}
 	} else {
+
+		switch tp.Elem().Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Uintptr, reflect.Float32, reflect.Float64, reflect.String:
+			row := query.QueryRow(sql, args...)
+			if err := row.Scan(o); err != nil {
+				return err
+			}
+			return nil
+		}
+		
 		return errors.New("not support type of o")
 	}
 	return nil
 }
+
 
 //mysql visible
 //使得sql语句结构化
@@ -98,6 +112,10 @@ func (sl *Sql) From(s string) *Sql {
 }
 func (sl *Sql) Where(s string) *Sql {
 	sl.where = s
+	return sl
+}
+func (sl *Sql) And(s string) *Sql {
+	sl.where += " AND " + s
 	return sl
 }
 func (sl *Sql) GroupBy(s string) *Sql {

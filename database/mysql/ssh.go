@@ -6,7 +6,6 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
-	"me/study/tools"
 	"net"
 	"os"
 )
@@ -45,7 +44,8 @@ func (self *ViaSSHDialer) Dial(addr string) (net.Conn, error) {
 
 func OpenSsh() {
 	sshcon, err := ssh.Dial("tcp", "..", SshConfig(".."))
-	if tools.ErrNotNil(err) {
+	if err != nil {
+		fmt.Println(err)
 		return
 	}
 	//session,err := sshcon.NewSession()

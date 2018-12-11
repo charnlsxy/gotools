@@ -9,7 +9,7 @@ import (
 )
 
 type Table struct {
-	name   string
+	Name   string
 	Fields []string
 	Types  []string
 	Flags  []string
@@ -19,7 +19,7 @@ type Table struct {
 func (t *Table) String() string {
 	buf := strings.Builder{}
 	buf.WriteString("type ")
-	buf.WriteString(toUpper(t.name) + " ")
+	buf.WriteString(toUpper(t.Name) + " ")
 	buf.WriteString("struct { \n")
 	for i := range t.Fields {
 		buf.WriteString(toUpper(t.Fields[i]))
@@ -36,7 +36,7 @@ func (t *Table) String() string {
 func (t *Table) InsertAllStr() string {
 	buf := strings.Builder{}
 	buf.WriteString("INSERT INTO ")
-	buf.WriteString(t.name + " (`")
+	buf.WriteString(t.Name + " (`")
 	buf.WriteString(strings.Join(t.Fields, "`, `"))
 	buf.WriteString("`) VALUES (:")
 	buf.WriteString(strings.Join(t.Fields, ", :"))
@@ -48,14 +48,14 @@ func (t *Table) SelectAllByWhereStr() string {
 	buf := strings.Builder{}
 	buf.WriteString("SELECT `")
 	buf.WriteString(strings.Join(t.Fields, "`, `"))
-	buf.WriteString("` FROM " + t.name)
+	buf.WriteString("` FROM " + t.Name)
 	buf.WriteString(" WHERE ")
 	return buf.String()
 
 }
 func (t *Table) UpdateAllStr() string {
 	buf := strings.Builder{}
-	buf.WriteString("UPDATE " + t.name + " SET ")
+	buf.WriteString("UPDATE " + t.Name + " SET ")
 	for i, v := range t.Fields {
 		buf.WriteString(" `" + v + "`=:" + v)
 		if i != len(t.Fields)-1 {
@@ -67,17 +67,13 @@ func (t *Table) UpdateAllStr() string {
 }
 
 func toUpper(s string) string {
-	rst := strings.Split(s, "_")
-	buf := strings.Builder{}
-	for _, v := range rst {
-		if 'a' <= v[0] && v[0] <= 'z' {
-			buf.WriteByte(v[0] - 'a' + 'A')
-			buf.WriteString(v[1:])
-		} else {
-			buf.WriteString(v)
-		}
+	r := ""
+	for _,e := range strings.Split(s, "_") {
+		s = strings.ToLower(e)
+		s = fmt.Sprintf("%c%s",s[0] - 'a' + 'A' , s[1:])
+		r += s
 	}
-	return buf.String()
+	return r
 }
 
 type Config struct {
@@ -111,6 +107,17 @@ func NewConfig(table string) *Config {
 	return &Config{TableName: table}
 }
 
+func ParseAll(db *sql.DB, schema, table string) ([]*Columns,error) {
+	c := make([]*Columns,0)
+	e := NewSql().
+		Select("*").
+		From("information_schema.columns").
+		Where(`TABLE_SCHEMA = "` + schema +`"`).
+		And(fmt.Sprintf("TABLE_NAME = '%s'",table)).
+		ResultInDb(&c,db)
+	return c,e
+}
+
 //从db查询生成cfg所配置的表
 func ParseTable(db *sql.DB, cfg *Config) (*Table, error) {
 	tb := new(Table)
@@ -118,7 +125,7 @@ func ParseTable(db *sql.DB, cfg *Config) (*Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	tb.name = cfg.TableName
+	tb.Name = cfg.TableName
 	for row.Next() {
 		var Field, Type string
 		var tmp interface{}
@@ -131,13 +138,13 @@ func ParseTable(db *sql.DB, cfg *Config) (*Table, error) {
 		if cfg.FieldsContains(Type) {
 			t = cfg.Fields(Type)
 		} else if strings.Contains(Type, "bigint") {
-			t = "int64"
+			t = "*int64"
 		} else if strings.Contains(Type, "int") {
-			t = "int32"
-		} else if strings.Contains(Type, "char") || strings.Contains(Type, "datetime") {
-			t = "string"
+			t = "*int32"
+		} else if strings.Contains(Type, "char") || strings.Contains(Type, "datetime") || strings.Contains(Type, "timestamp") {
+			t = "*string"
 		} else {
-			t = "interface{}"
+			t = "*interface{}"
 		}
 		tb.Types = append(tb.Types, t)
 		g := " `json:\"" + Field + "\"`"
@@ -148,7 +155,7 @@ func ParseTable(db *sql.DB, cfg *Config) (*Table, error) {
 
 type ConnConfig struct {
 	MysqlConfig
-	Config
+	Config  
 	SshHost string
 	SshUser string
 }
