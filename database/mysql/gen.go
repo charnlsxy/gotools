@@ -138,13 +138,17 @@ func ParseTable(db *sql.DB, cfg *Config) (*Table, error) {
 		if cfg.FieldsContains(Type) {
 			t = cfg.Fields(Type)
 		} else if strings.Contains(Type, "bigint") {
-			t = "*int64"
+			//t = "*int64"
+			t = "Long"
 		} else if strings.Contains(Type, "int") {
-			t = "*int32"
+			t = "Integer"
+			//t = "*int32"
 		} else if strings.Contains(Type, "char") || strings.Contains(Type, "datetime") || strings.Contains(Type, "timestamp") {
-			t = "*string"
+			t = "String"
+			//t = "*string"
 		} else {
-			t = "*interface{}"
+			t = "Object"
+			//t = "*interface{}"
 		}
 		tb.Types = append(tb.Types, t)
 		g := " `json:\"" + Field + "\"`"
