@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+const (
+	normal = iota
+	object
+	list
+)
+
 func toUpper(s string, first bool) string {
 	rst := strings.Split(s, "_")
 	buf := strings.Builder{}
@@ -24,7 +30,7 @@ func toUpper(s string, first bool) string {
 	return buf.String()
 }
 
-func printNormal(tab, k string, v interface{}) (string, string) {
+func deduceNormal(tab, k string, v interface{}) (string, string) {
 	switch v.(type) {
 	case string, byte, []byte:
 		return fmt.Sprintf("%sprivate String %s;\n", tab, string(k)), "String"
@@ -36,67 +42,55 @@ func printNormal(tab, k string, v interface{}) (string, string) {
 	return fmt.Sprintf("//unknown %s %v \n", string(k), v), "Object"
 }
 
-func printItf(tab, name string, v interface{}) (string, string) {
+//return content and type and identify
+func deduceItf(tab, name string, v interface{}) (content, rtype string, id int) {
 	switch v.(type) {
-	case string, byte, []byte, bool, float64, float32:
-		return printNormal(tab, name, v)
 	case []interface{}:
-		return printArr(tab, name, v.([]interface{}))
+		content, rtype = deduceArr(tab, name, v.([]interface{}))
+		id = list
 	case map[string]interface{}:
-		return printMap(v.(map[string]interface{}), tab, name)
+		content, rtype = deduceMap(v.(map[string]interface{}), tab, name)
+		id = object
 	default:
-		return fmt.Sprintf("//unknown %s %v \n", string(name), v), "Object"
+		content, rtype = deduceNormal(tab, name, v)
+		id = normal
 	}
+	return
 }
 
-func printArr(tab, name string, v []interface{}) (string, string) {
+func deduceArr(tab, name string, v []interface{}) (string, string) {
 	r := strings.Builder{}
-	val, t := printItf(tab, name, v[0])
-	t = "List<" + toUpper(t, false) + ">"
-	r.WriteString(fmt.Sprintf("%sprivate %s %s;\n", tab, t, name))
-	r.WriteString(val)
-	return r.String(), t
-}
-
-var varCnt = 0
-var tmpName = "VarClass_"
-
-func getNewName() string {
-	varCnt++
-	return fmt.Sprintf("%s%d", tmpName, varCnt)
-}
-func printMap(data map[string]interface{}, tab, name string) (string, string) {
-	r := strings.Builder{}
-	tp := toUpper(name, false)
-	r.WriteString(fmt.Sprintf("%sprivate %s %s\n",tab, tp, name))
-	r.WriteString(tab + "@Getter\n")
-	r.WriteString(tab + "@Setter\n")
-	r.WriteString(fmt.Sprintf("%sstatic class %s{\n", tab, tp))
-	for k, v := range data {
-		val, t := printItf(tab+"\t", k, v)
-		if len(t) > len(tmpName) && t[:len(tmpName)] == tmpName {
-			r.WriteString(fmt.Sprintf("%sprivate %s %s;\n", tab+"\t", toUpper(t, false), k))
-		}
+	val, itemType, id := deduceItf(tab, name, v[0])
+	listType := "List<" + itemType + ">"
+	//r.WriteString(fmt.Sprintf("%sprivate %s %s;\n", tab, listType, name))
+	if id != normal{
 		r.WriteString(val)
+	}
+	return r.String(), listType
+}
+
+func deduceMap(data map[string]interface{}, tab, name string) (string, string) {
+	r := strings.Builder{}
+	mapType := toUpper(name, false)
+	vals := make([]string, 0)
+
+	r.WriteString(tab + "@Getter @Setter\n")
+	r.WriteString(fmt.Sprintf("%sprivate static class %s{\n", tab, mapType))
+	for k, v := range data {
+		val, rtype , id := deduceItf(tab+"\t", k, v)
+		r.WriteString(fmt.Sprintf("%sprivate %s %s;\n", tab+"\t", rtype, k))
+		if id != normal{
+			vals = append(vals, val)
+		}
+	}
+	for _, e := range vals {
+		r.WriteString(e)
 	}
 	r.WriteString(tab + "}\n")
-	return r.String(), name
+	return r.String(), mapType
 }
-func build(name string, data map[string]interface{}) string {
-	r := strings.Builder{}
-	r.WriteString(fmt.Sprintf("@Data\npublic class %s{\n", name))
-	for k, v := range data {
-		val, t := printItf("\t", k, v)
-		if len(t) > len(tmpName) && t[:len(tmpName)] == tmpName {
-			r.WriteString(fmt.Sprintf("\tprivate %s %s;\n", t, k))
-		}
-		r.WriteString(val)
-	}
-	r.WriteString("}\n")
-	return r.String()
-}
+
 func Json2java(str []byte, name string) (string, error) {
-	varCnt = 0
 	data := make(map[string]interface{})
 	err := json.Unmarshal(str, &data)
 	if err != nil {
@@ -104,7 +98,8 @@ func Json2java(str []byte, name string) (string, error) {
 		return "", err
 	}
 	if name == "" {
-		name = getNewName()
+		name = "AutoGen"
 	}
-	return build(name, data), nil
+	content, _ ,_:= deduceItf("", name, data)
+	return content, nil
 }
